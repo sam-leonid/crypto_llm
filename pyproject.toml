@@ -1,0 +1,21 @@
+[project]
+name = "crypto_llm"
+version = "0.1.0"
+description = "Default template for PDM package"
+authors = [
+    {name = "sam-leonid", email = "lsamorcev@gmail.com"},
+]
+dependencies = [
+    "python-coinmarketcap>=0.5",
+    "langchain-nvidia-ai-endpoints>=0.2.1",
+    "python-dotenv>=1.0.1",
+    "pandas>=2.2.2",
+    "tqdm>=4.66.5",
+]
+requires-python = "==3.11.*"
+readme = "README.md"
+license = {text = "MIT"}
+
+
+[tool.pdm]
+distribution = false
