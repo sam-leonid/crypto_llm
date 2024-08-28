@@ -11,11 +11,13 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "pandas>=2.2.2",
     "tqdm>=4.66.5",
+    "pypdf>=4.3.1",
+    "langchain-community>=0.2.12",
+    "faiss-cpu>=1.8.0.post1",
 ]
 requires-python = "==3.11.*"
 readme = "README.md"
 license = {text = "MIT"}
-
 
 [tool.pdm]
 distribution = false
