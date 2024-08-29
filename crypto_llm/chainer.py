@@ -3,8 +3,8 @@ import logging
 from typing import List, Any
 from langchain.schema import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
-from vectorizer import FAISSVectorizer
-from prompter import QuestionPrompter, SummaryPrompter
+from crypto_llm.vectorizer import FAISSVectorizer
+from crypto_llm.prompter import QuestionPrompter, SummaryPrompter
 from langchain_nvidia_ai_endpoints import ChatNVIDIA
 
 logging.basicConfig(
@@ -63,6 +63,9 @@ class LlmChainer:
         retriever = self.vectorizer.get_retriever(
             name=currency_name, is_summary=is_summary
         )
+        if not retriever:
+            logger.warning("Retriever not found for: %s", currency_name)
+            return None
         if is_summary:
             if self.check_summary_exists(currency_name):
                 return self.get_summary(currency_name)

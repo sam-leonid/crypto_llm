@@ -14,7 +14,9 @@ class SummaryPrompter(BasePrompter):
         Answer the question based only on the following context. 
         Summarize the most important information about the cryptocurrency described in the whitepaper, focusing on its core features, technology, use cases, and potential. 
         **Limit your response to a maximum of 1000 characters.** 
-        Prioritize conciseness and clarity. 
+        Prioritize conciseness and clarity.
+        **Answer using Russian language and ensure the response is encoded in UTF-8.**
+        **Format your answer with each key feature or highlight on a new line for easy reading.**
 
         Context:
 

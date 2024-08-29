@@ -6,6 +6,7 @@ from tqdm import tqdm
 from typing import List
 from langchain.vectorstores import FAISS
 from langchain_nvidia_ai_endpoints import NVIDIAEmbeddings
+from crypto_llm.loader import WhitePaperLoader, CMCLoader
 
 # Настройка логгирования
 logging.basicConfig(
@@ -31,6 +32,8 @@ class BaseVectorizer(abc.ABC):
 
 class FAISSVectorizer(BaseVectorizer):
     def __init__(self, model_name: str = "cointegrated/LaBSE-en-ru"):
+        self.wp_loader = WhitePaperLoader()
+        self.cmc_loader = CMCLoader()
         self.wp_path = os.getenv("DATA_PATH") + "sources/whitepapers/"
         self.embedding_path = os.getenv("DATA_PATH") + "embeddings/"
         self.embedder = NVIDIAEmbeddings(
@@ -38,41 +41,47 @@ class FAISSVectorizer(BaseVectorizer):
         )
         logger.info("FAISSVectorizer initialized with model: %s", model_name)
 
-    def calc_and_save_embedding(self, name: str) -> None:
+    def calc_and_save_embedding(self, currency_name: str) -> bool:
         """
-        Calculate and save embedding for a given name.
+        Calculate and save embedding for a given currency_name.
 
         Args:
-            name (str): The name of the whitepaper.
+            currency_name (str): The currency_name of the whitepaper.
 
         Returns:
             None.
         """
-        logger.info("Calculating and saving embedding for: %s", name)
-        if not os.path.exists(self.embedding_path + name):
-            if os.path.exists(self.wp_path + name):
-                with open(self.wp_path + name, "rb") as fp:
-                    whitepaper_raw = pickle.load(fp)
-                db = FAISS.from_documents(whitepaper_raw, self.embedder)
-                db.save_local(self.embedding_path + name)
-                logger.info("Embedding saved for: %s", name)
-            else:
-                logger.warning("Whitepaper not found for: %s", name)
+        logger.info("Calculating and saving embedding for: %s", currency_name)
+        if os.path.exists(self.embedding_path + currency_name):
+            logger.info("Embedding already exists for: %s", currency_name)
         else:
-            logger.info("Embedding already exists for: %s", name)
+            if not os.path.exists(self.wp_path + currency_name):
+                logger.warning("Whitepaper not found for: %s", currency_name)
+                self.cmc_loader.get_info_by_name(currency_name)
+                self.cmc_loader.save_info()
+                _, pdf_link = self.cmc_loader.get_pdf_whitepaper(currency_name)
+                if not self.wp_loader.get_info(name=currency_name, link=pdf_link):
+                    logger.warning("PDF link not found for: %s", currency_name)
+                    return False
+            with open(self.wp_path + currency_name, "rb") as fp:
+                whitepaper_raw = pickle.load(fp)
+            db = FAISS.from_documents(whitepaper_raw, self.embedder)
+            db.save_local(self.embedding_path + currency_name)
+            logger.info("Embedding saved for: %s", currency_name)
+        return True
 
-    def calc_and_save_embedding_batch(self, names: List[str]) -> None:
+    def calc_and_save_embedding_batch(self, currency_names: List[str]) -> None:
         """
-        Calculate and save embeddings for a list of names.
+        Calculate and save embeddings for a list of currency_names.
 
         Args:
-            names (List[str]): A list of names of whitepapers.
+            currency_names (List[str]): A list of currency_names of whitepapers.
 
         Returns:
             None.
         """
-        logger.info("Calculating and saving embeddings for batch: %s", names)
-        for name in tqdm(names):
+        logger.info("Calculating and saving embeddings for batch: %s", currency_names)
+        for name in tqdm(currency_names):
             self.calc_and_save_embedding(name)
         logger.info("Batch processing complete.")
 
@@ -94,18 +103,22 @@ class FAISSVectorizer(BaseVectorizer):
         Returns:
             langchain.vectorstores.faiss.FAISS: The FAISS retriever.
         """
-        if is_summary:
-            k = 9999
-        logger.info(
-            "Getting retriever for: %s with search type: %s and k: %d",
-            name,
-            search_type,
-            k,
-        )
-        db = FAISS.load_local(
-            self.embedding_path + name,
-            self.embedder,
-            allow_dangerous_deserialization=True,
-        )
-        logger.info("Retriever obtained for: %s", name)
-        return db.as_retriever(search_type="similarity", search_kwargs={"k": 1000})
+        if self.calc_and_save_embedding(name):
+            if is_summary:
+                k = 9999
+            logger.info(
+                "Getting retriever for: %s with search type: %s and k: %d",
+                name,
+                search_type,
+                k,
+            )
+            db = FAISS.load_local(
+                self.embedding_path + name,
+                self.embedder,
+                allow_dangerous_deserialization=True,
+            )
+            logger.info("Retriever obtained for: %s", name)
+            return db.as_retriever(search_type="similarity", search_kwargs={"k": 1000})
+        else:
+            logger.warning("Embedding not found for: %s", name)
+            return None

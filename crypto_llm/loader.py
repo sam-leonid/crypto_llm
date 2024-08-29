@@ -46,13 +46,15 @@ class WhitePaperLoader(BaseLoader):
             is_separator_regex=is_separator_regex,
         )
 
-    def get_info(self, name: str, link: str):
+    def get_info(self, name: str, link: str) -> bool:
         try:
             data = PyPDFLoader(link).load()
             data = self.split_text(data)
             self.save_info(name, data)
+            return True
         except Exception as e:
             logger.warning(f"Error fetching info for {link}. " + str(e))
+            return False
 
     def get_info_batch(self, list_of_links: List):
         for name, link in tqdm(list_of_links):
@@ -84,7 +86,7 @@ class CMCLoader(BaseLoader):
         )
         logger.info("CMCLoader initialized")
 
-    def get_cmc_list(self, limit: int = 5) -> pd.DataFrame:
+    def get_cmc_list(self, start: int = 1, limit: int = 5) -> pd.DataFrame:
         """
         Fetches CMC list with given limit and saves it to `self.cmc_list`
 
@@ -95,10 +97,37 @@ class CMCLoader(BaseLoader):
             pd.DataFrame: DataFrame with CMC list
         """
         logger.info(f"Fetching CMC list with limit {limit}")
-        response = self.cmc_client.cryptocurrency_listings_latest(limit=limit)
-        self.cmc_list = pd.DataFrame(response.data)
+        response = self.cmc_client.cryptocurrency_listings_latest(
+            start=start, limit=limit
+        )
+        self.cmc_list = pd.concat([self.cmc_list, pd.DataFrame(response.data)])
         logger.info(f"Fetched {len(self.cmc_list)} items from CMC")
         return self.cmc_list
+
+    def get_all_cmc_list(
+        self,
+        max_limit: int = 10_000,
+        step=5_000,
+        sleep_time: int = 35,
+        iters_wait: int = 2,
+    ) -> pd.DataFrame:
+        for start in tqdm(range(1, max_limit, step)):
+            exc_rate = 0
+            try:
+                self.get_cmc_list(start, min(max_limit - start, step))
+            except Exception as e:
+                exc_rate += 1
+                logger.warning(
+                    "Error fetching cmc list info. "
+                    + f"Attempt {str(exc_rate)}. Error: {str(e)}"
+                )
+                if exc_rate == iters_wait:
+                    logger.error(
+                        "Failed to fetch cmc list info."
+                        + f"after {iters_wait} attempts"
+                    )
+                    return
+                sleep(sleep_time)
 
     @staticmethod
     def preprocess_data(data):
@@ -150,6 +179,15 @@ class CMCLoader(BaseLoader):
         else:
             logger.info(f"Already fetched info for {sym}")
 
+    def get_info_by_name(self, currency_name: str):
+        sym_list = self.cmc_list[self.cmc_list["name"] == currency_name][
+            "symbol"
+        ].tolist()
+        if sym_list:
+            return self.get_info(sym=sym_list[0])
+        else:
+            logger.warning(f"No symbol found for {currency_name}")
+
     def get_info_batch(self, sleep_time: int = 35, iters_wait: int = 2):
         """
         Fetches detailed info for all symbols in `self.cmc_list`.
@@ -192,10 +230,11 @@ class CMCLoader(BaseLoader):
             logger.warning("Detailed CMC info is None, not saving")
 
     def get_pdf_whitepaper(self, name: str) -> List:
-        return self.cmc_detailed_info[
+        result = self.cmc_detailed_info[
             (self.cmc_detailed_info["name"] == name)
-            and (self.cmc_detailed_info["technical_doc"].str.endswith(".pdf"))
+            & (self.cmc_detailed_info["technical_doc"].str.endswith(".pdf"))
         ][["name", "technical_doc"]].values.tolist()
+        return result[0] if result else [None, None]
 
     def get_all_pdf_whitepapers(self) -> List:
         return self.cmc_detailed_info[
