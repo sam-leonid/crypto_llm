@@ -15,6 +15,7 @@ chainer = LlmChainer()
 # Загружаем список криптовалют
 cmc_loader = CMCLoader()
 cmc_loader.get_all_cmc_list()
+cmc_loader.save_info()
 crypto_list = cmc_loader.show_all_currency_names()
 
 # Заголовок приложения
