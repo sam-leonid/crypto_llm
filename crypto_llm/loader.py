@@ -2,7 +2,6 @@ import abc
 import coinmarketcapapi
 import pandas as pd
 import os
-from dotenv import load_dotenv
 from tqdm import tqdm
 from time import sleep
 import logging
@@ -17,8 +16,6 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
-
-load_dotenv()
 
 
 class BaseLoader(abc.ABC):

@@ -21,3 +21,10 @@ license = {text = "MIT"}
 
 [tool.pdm]
 distribution = false
+
+[tool.pdm.scripts.env] # or [tool.pdm.env] 
+env_file = ".env"
+prefer = "dotenv" 
+
+[tool.ruff]
+ignore = ["E501"]
