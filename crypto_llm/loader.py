@@ -229,6 +229,9 @@ class CMCLoader(BaseLoader):
         else:
             logger.warning("Detailed CMC info is None, not saving")
 
+    def show_all_currency_names(self) -> List:
+        return self.cmc_list["name"].tolist()
+
     def get_pdf_whitepaper(self, name: str) -> List:
         result = self.cmc_detailed_info[
             (self.cmc_detailed_info["name"] == name)
