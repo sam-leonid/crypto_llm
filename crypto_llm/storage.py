@@ -44,7 +44,7 @@ class FileStorage(BaseStorage):
         self.cmc_detailed_info = (
             pd.read_csv(self.cmc_detailed_info_path)
             if os.path.exists(self.cmc_detailed_info_path)
-            else pd.DataFrame(columns=["symbol"])
+            else pd.DataFrame(columns=["symbol", "name"])
         )
         self.pdf_correct_names = pd.read_csv(self.path + "pdf_correct_names.csv")[
             "names"
