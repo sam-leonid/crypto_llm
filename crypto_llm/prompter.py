@@ -11,19 +11,25 @@ class BasePrompter(abc.ABC):
 class SummaryPrompter(BasePrompter):
     def __init__(self):
         self.template = """
-        Answer the question based only on the following context. 
-        Summarize the most important information about the cryptocurrency described in the whitepaper, focusing on its core features, technology, use cases, and potential. 
-        **Limit your response to a maximum of 1000 characters.** 
-        Prioritize conciseness and clarity.
-        **Answer using Russian language and ensure the response is encoded in UTF-8.**
-        **Format your answer with each key feature or highlight on a new line for easy reading.**
+            Ответить на вопрос, основываясь только на следующем контексте. 
+            Кратко изложите наиболее важную информацию о криптовалюте, описанной в whitepaper, сосредоточившись на ее основных функциях, технологии, вариантах использования и потенциале. 
+            **Ограничьте свой ответ максимум 1000 символами.** 
+            В приоритете краткость и ясность.
+            **Отвечайте на русском языке.**
+            **Используйте только латинские или кириллические символы.**
+            **Допустимо также использовать цифры и знаки пунктуации.**
 
-        Context:
+            **Форматируйте свой ответ, выделяя каждую ключевую особенность или важный момент с новой строки для удобства чтения.**
 
-        {context}
+            Контекст:
 
-        Question: What are the key features and highlights of this cryptocurrency? 
-        """
+            {context}
+
+            Вопрос: Каковы ключевые особенности и преимущества этой криптовалюты? 
+
+            Ответ:
+            """
+
         self.prompt = ChatPromptTemplate.from_template(self.template)
 
     def get_prompt(self):

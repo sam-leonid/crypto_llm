@@ -46,6 +46,9 @@ class FileStorage(BaseStorage):
             if os.path.exists(self.cmc_detailed_info_path)
             else pd.DataFrame(columns=["symbol"])
         )
+        self.pdf_correct_names = pd.read_csv(self.path + "pdf_correct_names.csv")[
+            "names"
+        ].tolist()
         logger.info("Storage initialized")
 
     def get_all_cmc_list(
@@ -83,7 +86,8 @@ class FileStorage(BaseStorage):
             logger.warning("Detailed CMC info is None, not saving")
 
     def show_all_currency_names(self) -> List:
-        return self.cmc_list["name"].tolist()
+        return self.pdf_correct_names
+        # return self.cmc_list["name"].tolist()
 
     def get_pdf_whitepaper_link(self, name: str) -> List:
         result = self.cmc_detailed_info[
