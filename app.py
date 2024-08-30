@@ -15,7 +15,7 @@ def initialize_storage():
 
     # Загружаем список криптовалют
     storage = FileStorage()
-    # storage.get_all_cmc_list()
+    storage.get_all_cmc_list()
     storage.save_cmc_info()
     crypto_list = storage.show_all_currency_names()
 
