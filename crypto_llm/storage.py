@@ -36,11 +36,7 @@ class FileStorage(BaseStorage):
         self.path = os.getenv("DATA_PATH") + "sources/cmc/"
         self.cmc_list_path = os.path.join(self.path, "cmc_list.csv")
         self.cmc_detailed_info_path = os.path.join(self.path, "cmc_info.csv")
-        self.cmc_list = (
-            pd.read_csv(self.cmc_list_path)
-            if os.path.exists(self.cmc_list_path)
-            else None
-        )
+        self.cmc_list = self.get_all_cmc_list()
         self.cmc_detailed_info = (
             pd.read_csv(self.cmc_detailed_info_path)
             if os.path.exists(self.cmc_detailed_info_path)
@@ -61,6 +57,7 @@ class FileStorage(BaseStorage):
         self.cmc_list = self.cmc_loader.get_all_cmc_list(
             max_limit, step, sleep_time, iters_wait
         )
+        return self.cmc_list
 
     def get_wp_info(self, currency_name: str, pdf_link: str):
         return self.wp_loader.get_info(name=currency_name, link=pdf_link)
