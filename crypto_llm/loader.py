@@ -71,38 +71,15 @@ class WhitePaperLoader(BaseLoader):
 class CMCLoader(BaseLoader):
     def __init__(self):
         self.cmc_client = coinmarketcapapi.CoinMarketCapAPI(os.getenv("CMC_API_KEY"))
-        self.path = os.getenv("DATA_PATH") + "sources/cmc/"
-        self.cmc_list_path = self.path + "cmc_list.csv"
-        self.cmc_detailed_info_path = self.path + "cmc_info.csv"
-        self.cmc_list = (
-            pd.read_csv(self.cmc_list_path)
-            if os.path.exists(self.cmc_list_path)
-            else None
-        )
-        self.cmc_detailed_info = (
-            pd.read_csv(self.cmc_detailed_info_path)
-            if os.path.exists(self.cmc_detailed_info_path)
-            else pd.DataFrame(columns=["symbol"])
-        )
         logger.info("CMCLoader initialized")
 
     def get_cmc_list(self, start: int = 1, limit: int = 5) -> pd.DataFrame:
-        """
-        Fetches CMC list with given limit and saves it to `self.cmc_list`
-
-        Args:
-            limit (int): limit of items to fetch from CMC
-
-        Returns:
-            pd.DataFrame: DataFrame with CMC list
-        """
         logger.info(f"Fetching CMC list with limit {limit}")
         response = self.cmc_client.cryptocurrency_listings_latest(
             start=start, limit=limit
         )
-        self.cmc_list = pd.concat([self.cmc_list, pd.DataFrame(response.data)])
-        logger.info(f"Fetched {len(self.cmc_list)} items from CMC")
-        return self.cmc_list
+        logger.info(f"Fetched {len(response.data)} items from CMC")
+        return pd.DataFrame(response.data)
 
     def get_all_cmc_list(
         self,
@@ -111,10 +88,12 @@ class CMCLoader(BaseLoader):
         sleep_time: int = 35,
         iters_wait: int = 2,
     ) -> pd.DataFrame:
+        cmc_list = None
         for start in tqdm(range(1, max_limit, step)):
             exc_rate = 0
             try:
-                self.get_cmc_list(start, min(max_limit - start, step))
+                chunk = self.get_cmc_list(start, min(max_limit - start, step))
+                cmc_list = pd.concat([cmc_list, chunk])
             except Exception as e:
                 exc_rate += 1
                 logger.warning(
@@ -128,6 +107,7 @@ class CMCLoader(BaseLoader):
                     )
                     return
                 sleep(sleep_time)
+        return cmc_list
 
     @staticmethod
     def preprocess_data(data):
@@ -140,7 +120,13 @@ class CMCLoader(BaseLoader):
 
         return data
 
-    def get_info(self, sym: str, sleep_time: int = 35, iters_wait: int = 2):
+    def get_info(
+        self,
+        cmc_detailed_info: pd.DataFrame,
+        sym: str,
+        sleep_time: int = 35,
+        iters_wait: int = 2,
+    ) -> pd.DataFrame:
         """
         Fetches detailed info for a given symbol from CMC.
 
@@ -152,17 +138,17 @@ class CMCLoader(BaseLoader):
         Returns:
             pd.DataFrame: DataFrame with detailed info, or None if failed to fetch
         """
-        if sym not in self.cmc_detailed_info["symbol"].values:
+        if sym not in cmc_detailed_info["symbol"].values:
             exc_rate = 0
             while True:
                 try:
                     data = self.cmc_client.cryptocurrency_info(symbol=sym).data[sym]
                     data = self.preprocess_data(data)
                     logger.debug(f"Successfully fetched info for {sym}")
-                    self.cmc_detailed_info = pd.concat(
-                        [self.cmc_detailed_info, pd.DataFrame(data)]
+                    cmc_detailed_info = pd.concat(
+                        [cmc_detailed_info, pd.DataFrame(data)]
                     )
-                    return
+                    return cmc_detailed_info
                 except Exception as e:
                     exc_rate += 1
                     logger.warning(
@@ -178,34 +164,39 @@ class CMCLoader(BaseLoader):
                     sleep(sleep_time)
         else:
             logger.info(f"Already fetched info for {sym}")
+        return cmc_detailed_info
 
-    def get_info_by_name(self, currency_name: str):
-        sym_list = self.cmc_list[self.cmc_list["name"] == currency_name][
-            "symbol"
-        ].tolist()
+    def get_info_by_name(
+        self,
+        cmc_list: pd.DataFrame,
+        cmc_detailed_info: pd.DataFrame,
+        currency_name: str,
+    ):
+        sym_list = cmc_list[cmc_list["name"] == currency_name]["symbol"].tolist()
         if sym_list:
-            return self.get_info(sym=sym_list[0])
+            return self.get_info(cmc_detailed_info=cmc_detailed_info, sym=sym_list[0])
         else:
             logger.warning(f"No symbol found for {currency_name}")
 
-    def get_info_batch(self, sleep_time: int = 35, iters_wait: int = 2):
-        """
-        Fetches detailed info for all symbols in `self.cmc_list`.
-
-        Args:
-            sleep_time (int): time to sleep between attempts in case of errors
-            iters_wait (int): number of attempts to fetch info before giving up
-
-        Returns:
-            pd.DataFrame: Concatenated DataFrame with detailed info for all symbols
-        """
+    def get_info_batch(
+        self,
+        cmc_list: pd.DataFrame,
+        cmc_detailed_info: pd.DataFrame,
+        sleep_time: int = 35,
+        iters_wait: int = 2,
+    ):
         logger.info("Starting to fetch detailed info")
-
-        for sym in tqdm(self.cmc_list["symbol"].str.upper().unique()):
-            self.get_info(sym=sym, sleep_time=sleep_time, iters_wait=iters_wait)
+        for sym in tqdm(cmc_list["symbol"].str.upper().unique()):
+            cmc_detailed_info = self.get_info(
+                cmc_list=cmc_list,
+                cmc_detailed_info=cmc_detailed_info,
+                sym=sym,
+                sleep_time=sleep_time,
+                iters_wait=iters_wait,
+            )
 
         logger.info("Finished fetching detailed info")
-        return self.cmc_detailed_info
+        return cmc_detailed_info
 
     def save_info(self):
         """

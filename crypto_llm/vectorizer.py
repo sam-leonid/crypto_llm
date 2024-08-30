@@ -6,7 +6,7 @@ from tqdm import tqdm
 from typing import List
 from langchain.vectorstores import FAISS
 from langchain_nvidia_ai_endpoints import NVIDIAEmbeddings
-from crypto_llm.loader import WhitePaperLoader, CMCLoader
+from crypto_llm.storage import FileStorage
 
 # Настройка логгирования
 logging.basicConfig(
@@ -32,8 +32,7 @@ class BaseVectorizer(abc.ABC):
 
 class FAISSVectorizer(BaseVectorizer):
     def __init__(self, model_name: str = "cointegrated/LaBSE-en-ru"):
-        self.wp_loader = WhitePaperLoader()
-        self.cmc_loader = CMCLoader()
+        self.storage = FileStorage()
         self.wp_path = os.getenv("DATA_PATH") + "sources/whitepapers/"
         self.embedding_path = os.getenv("DATA_PATH") + "embeddings/"
         self.embedder = NVIDIAEmbeddings(
@@ -57,10 +56,12 @@ class FAISSVectorizer(BaseVectorizer):
         else:
             if not os.path.exists(self.wp_path + currency_name):
                 logger.warning("Whitepaper not found for: %s", currency_name)
-                self.cmc_loader.get_info_by_name(currency_name)
-                self.cmc_loader.save_info()
-                _, pdf_link = self.cmc_loader.get_pdf_whitepaper(currency_name)
-                if not self.wp_loader.get_info(name=currency_name, link=pdf_link):
+                self.storage.get_symbol_by_name(currency_name)
+                self.storage.save_cmc_info()
+                _, pdf_link = self.storage.get_pdf_whitepaper_link(currency_name)
+                if not self.storage.get_wp_info(
+                    currency_name=currency_name, pdf_link=pdf_link
+                ):
                     logger.warning("PDF link not found for: %s", currency_name)
                     return False
             with open(self.wp_path + currency_name + ".pkl", "rb") as fp:
