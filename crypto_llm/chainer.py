@@ -5,7 +5,7 @@ from langchain.schema import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 from crypto_llm.vectorizer import FAISSVectorizer
 from crypto_llm.prompter import QuestionPrompter, SummaryPrompter
-from langchain_nvidia_ai_endpoints import ChatNVIDIA
+from crypto_llm.model import NvidiaModel
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -20,9 +20,7 @@ class LlmChainer:
     ):
         self.summary_path = os.getenv("DATA_PATH") + "summaries/"
         self.vectorizer = FAISSVectorizer()
-        self.llm = ChatNVIDIA(
-            model=llm_name, nvidia_api_key=os.getenv("NVIDIA_API_KEY")
-        )
+        self.llm = NvidiaModel(llm_name).get_model()
         logger.info("LlmChainer initialized with retriever and LLM.")
 
     @staticmethod

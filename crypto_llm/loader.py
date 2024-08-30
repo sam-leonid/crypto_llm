@@ -64,7 +64,7 @@ class WhitePaperLoader(BaseLoader):
         return self.splitter.split_documents(data)
 
     def save_info(self, name: str, data: List[Document]):
-        with open(self.path + name, "wb") as fp:
+        with open(self.path + name + ".pkl", "wb") as fp:
             pickle.dump(data, fp)
 
 

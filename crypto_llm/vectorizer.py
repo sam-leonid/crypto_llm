@@ -63,7 +63,7 @@ class FAISSVectorizer(BaseVectorizer):
                 if not self.wp_loader.get_info(name=currency_name, link=pdf_link):
                     logger.warning("PDF link not found for: %s", currency_name)
                     return False
-            with open(self.wp_path + currency_name, "rb") as fp:
+            with open(self.wp_path + currency_name + ".pkl", "rb") as fp:
                 whitepaper_raw = pickle.load(fp)
             db = FAISS.from_documents(whitepaper_raw, self.embedder)
             db.save_local(self.embedding_path + currency_name)
